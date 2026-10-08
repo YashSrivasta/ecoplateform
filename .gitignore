@@ -1,0 +1,7 @@
+@"
+node_modules
+uploads
+.env
+dist
+eco.db
+"@ | Out-File -Encoding ascii .gitignore
