@@ -17,7 +17,7 @@ function Shell({ role, links }) {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand"><span className="mark"><Icon name="leaf" size={20} /></span>EcoQuest</div>
+        <div className="brand"><img src="/logo-full.png" alt="EcoQuest" width="172" height="64" /></div>
         <nav className="nav" aria-label="Main">
           {links.map(([to, label, icon]) => <NavLink key={to} to={to} end={to === '/' + role}><Icon name={icon} />{label}</NavLink>)}
         </nav>
