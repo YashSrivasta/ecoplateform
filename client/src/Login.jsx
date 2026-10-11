@@ -16,7 +16,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <section className="login-hero">
-        <div className="brand" style={{ padding: 0 }}><span className="mark"><Icon name="leaf" size={20} /></span>EcoQuest</div>
+        <img className="login-logo" src="/logo-full.png" alt="EcoQuest" width="280" height="104" />
         <h1>Learn about the planet. Earn points for helping it.</h1>
         <ul className="ticks">
           {['Quizzes that get harder as your class level goes up', 'Missions you prove with a photo', 'Points, levels and badges you earn with your class'].map(t => <li key={t}><span className="ico"><Icon name="check" size={16} /></span>{t}</li>)}
