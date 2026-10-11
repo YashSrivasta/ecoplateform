@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <clipPath id="outside"><rect x="0" y="0" width="250" height="103"/><rect x="0" y="149" width="250" height="101"/></clipPath>
+    <clipPath id="band"><rect x="0" y="103" width="250" height="46"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <g transform="translate(12 12) scale(.16)" fill="#d6ff00">
+    <path clip-path="url(#outside)" fill-rule="evenodd" d="M125 0a125 125 0 1 0 0 250a125 125 0 1 0 0-250ZM125 46a79 79 0 1 1 0 158a79 79 0 1 1 0-158Z"/>
+    <circle cx="125" cy="125" r="79" clip-path="url(#band)"/>
+  </g>
+</svg>
