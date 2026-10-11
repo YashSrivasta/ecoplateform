@@ -42,18 +42,18 @@ export function Proof({ src, name }) {
 export function PointsChart({ data, height = 220 }) {
   if (!data.length) return <p className="muted">Earn points to see your chart grow.</p>;
   const tick = { fill: '#8e95a4', fontSize: 12 };
-  const ring = { fill: '#b9f20a', stroke: '#1b1f27', strokeWidth: 2 };
+  const ring = { fill: '#d6ff00', stroke: '#1b1f27', strokeWidth: 2 };
   return (
     <>
       <div role="img" aria-label="Points earned per day">
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart data={data} margin={{ top: 12, right: 14, left: -16, bottom: 0 }}>
-            <defs><linearGradient id="ptsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#b9f20a" stopOpacity=".26" /><stop offset="100%" stopColor="#b9f20a" stopOpacity="0" /></linearGradient></defs>
+            <defs><linearGradient id="ptsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d6ff00" stopOpacity=".26" /><stop offset="100%" stopColor="#d6ff00" stopOpacity="0" /></linearGradient></defs>
             <CartesianGrid vertical={false} stroke="#2b303c" strokeDasharray="3 6" />
             <XAxis dataKey="day" tickFormatter={fmtDay} tick={tick} tickLine={false} axisLine={false} />
             <YAxis allowDecimals={false} tick={tick} tickLine={false} axisLine={false} />
             <Tooltip cursor={{ stroke: '#4a5163' }} contentStyle={{ background: '#0e1015', border: '1px solid #303644', borderRadius: 12 }} labelStyle={{ color: '#8e95a4' }} itemStyle={{ color: '#f4f6f9' }} labelFormatter={fmtDay} formatter={v => [v + ' points', 'Earned']} />
-            <Area type="monotone" dataKey="points" stroke="#b9f20a" strokeWidth={2} fill="url(#ptsFill)" dot={{ r: 4, ...ring }} activeDot={{ r: 6, ...ring }} />
+            <Area type="monotone" dataKey="points" stroke="#d6ff00" strokeWidth={2} fill="url(#ptsFill)" dot={{ r: 4, ...ring }} activeDot={{ r: 6, ...ring }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
