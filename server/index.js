@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from 'express'; import cors from 'cors'; import pg from 'pg';
 import bcrypt from 'bcryptjs'; import jwt from 'jsonwebtoken'; import multer from 'multer';
 import fs from 'fs'; import crypto from 'crypto';
