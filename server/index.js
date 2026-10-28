@@ -1,7 +1,7 @@
 import express from 'express'; import cors from 'cors'; import pg from 'pg';
 import bcrypt from 'bcryptjs'; import jwt from 'jsonwebtoken'; import multer from 'multer';
 import fs from 'fs'; import crypto from 'crypto';
-import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js';
+import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js'; import authx from './authx.js'; import collab from './collab.js';
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET || !process.env.DATABASE_URL) { console.error('Set JWT_SECRET and DATABASE_URL'); process.exit(1); }
 pg.types.setTypeParser(20, parseInt); pg.types.setTypeParser(1700, parseFloat); // bigint/numeric -> JS numbers
@@ -29,7 +29,7 @@ if (!(await get("SELECT 1 FROM quizzes q JOIN subjects s ON s.id=q.subject_id WH
 fs.mkdirSync('uploads', { recursive: true });
 const upload = multer({ storage: multer.diskStorage({ destination: 'uploads', filename: (_, f, cb) => cb(null, crypto.randomUUID() + '.' + (f.originalname.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')) }),
   limits: { fileSize: 5e6 }, fileFilter: (_, f, cb) => cb(null, /^image\//.test(f.mimetype)) });
-const app = express(); app.use(cors({ origin: process.env.CLIENT_ORIGIN || true })); app.use(express.json());
+const app = express(); app.set('trust proxy', process.env.TRUST_PROXY === '0' ? false : 1); /* Render sits behind one proxy; needed so the login limit sees the real visitor address */ app.use(cors({ origin: process.env.CLIENT_ORIGIN || true })); app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 const auth = roles => (req, res, next) => {
   try { const u = jwt.verify((req.headers.authorization || '').slice(7), SECRET); if (roles && !roles.includes(u.role)) return res.status(403).json({ error: 'Not allowed for your role' }); req.user = u; next(); }
@@ -46,11 +46,7 @@ app.post('/api/auth/register', wrap(async (req, res) => {
   if (await get('SELECT 1 FROM users WHERE email=?', email.toLowerCase())) return res.status(409).json({ error: 'Email already registered' });
   const u = (await run('INSERT INTO users(role,name,email,password_hash,grade) VALUES(?,?,?,?,?) RETURNING *', role, name.trim(), email.toLowerCase(), bcrypt.hashSync(password, 10), role === 'student' ? +grade : null)).rows[0];
   res.json({ token: token(u), user: pub(u) }); }));
-app.post('/api/auth/login', wrap(async (req, res) => {
-  const { email, password, role } = req.body; const u = await get('SELECT * FROM users WHERE email=?', (email || '').toLowerCase());
-  if (!u || !bcrypt.compareSync(password || '', u.password_hash)) return res.status(401).json({ error: 'Wrong email or password' });
-  if (u.role !== role) return res.status(403).json({ error: `This is a ${u.role} account. Use the ${u.role} login.` });
-  res.json({ token: token(u), user: pub(u) }); }));
+authx({ app, wrap, get, run, bcrypt, token, pub }); // rate-limited login + Google sign-in (authx.js)
 app.get('/api/me', auth(), wrap(async (req, res) => res.json(pub(await get('SELECT * FROM users WHERE id=?', req.user.id)))));
 app.post('/api/me/photo', auth(), upload.single('photo'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image required' }); await run('UPDATE users SET photo=? WHERE id=?', '/uploads/' + req.file.filename, req.user.id); res.json({ photo: '/uploads/' + req.file.filename }); }));
@@ -101,6 +97,7 @@ app.get('/api/classes/:id/students', T, view, wrap(async (req, res) => res.json(
   (SELECT COUNT(*) FROM submissions s JOIN missions m ON m.id=s.mission_id WHERE s.student_id=u.id AND m.class_id=? AND s.status='approved') AS missions_done
   FROM enrollments e JOIN users u ON u.id=e.student_id WHERE e.class_id=? ORDER BY points DESC`, +req.params.id, +req.params.id))));
 insight({ app, S, T, own, view, wrap, all, get, run, tx }); // missions (subjects + deadline), impact, leaderboard, analytics, suggestions (insight.js)
+collab({ app, S, T, view, wrap, all, get, run, tx }); // projects across classes, class comparison, portfolio, CSV export (collab.js)
 app.get('/api/classes/:id/submissions', T, view, wrap(async (req, res) => res.json(await all(`SELECT s.id,s.photo,s.status,s.awarded,s.created_at,u.name AS student,m.title,m.points AS max_points
   FROM submissions s JOIN missions m ON m.id=s.mission_id JOIN users u ON u.id=s.student_id WHERE m.class_id=? ORDER BY (s.status='pending') DESC, s.id DESC`, +req.params.id))));
 app.post('/api/submissions/:id/review', T, wrap(async (req, res) => {

@@ -18,6 +18,28 @@ export async function awardMission(x, s, pts) {
   return touchStreak(x, s.student_id);
 }
 
+// Shared by normal missions (below) and project missions (collab.js): one set of rules for title, subjects and deadline.
+export async function parseMission(body, all, get) {
+  const { title, description, points, subjects: subj, deadline } = body || {};
+  if (typeof title !== 'string' || !title.trim() || !(points > 0)) return { error: 'Title and points required' };
+  const known = await all('SELECT id,slug FROM subjects'), slugs = [...new Set(Array.isArray(subj) && subj.length ? subj : ['environment'])];
+  const ids = slugs.map(s => known.find(k => k.slug === s)?.id); if (ids.some(i => !i)) return { error: 'Unknown subject' };
+  let dl = null;
+  if (deadline) { // 'YYYY-MM-DD' means the end of that day in the app timezone
+    if (typeof deadline !== 'string') return { error: 'Invalid deadline' };
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(deadline);
+    try { dl = (await get(dateOnly ? `SELECT ((?::date + 1)::timestamp AT TIME ZONE ?::text) - interval '1 second' AS d` : 'SELECT ?::timestamptz AS d', ...(dateOnly ? [deadline, TZ] : [deadline]))).d; }
+    catch (e) { if (String(e.code).startsWith('22')) return { error: 'Invalid deadline' }; throw e; }
+    if (new Date(dl) < new Date()) return { error: 'Deadline is in the past' };
+  }
+  return { title: title.trim().slice(0, 200), description: String(description || '').slice(0, 2000), points: Math.min(+points, 100), ids, dl };
+}
+export async function insertMission(x, classId, m, projectId = null) {
+  const id = (await x('INSERT INTO missions(class_id,title,description,points,deadline,project_id) VALUES(?,?,?,?,?,?) RETURNING id', classId, m.title, m.description, m.points, m.dl, projectId)).rows[0].id;
+  for (const sid of m.ids) await x('INSERT INTO mission_subjects(mission_id,subject_id) VALUES(?,?)', id, sid);
+  return id;
+}
+
 export default function insight({ app, S, T, own, view, wrap, all, get, run, tx }) {
   const SUBJ_JSON = `(SELECT COALESCE(json_agg(json_build_object('slug',s.slug,'name',s.name,'color',s.color,'icon',s.icon) ORDER BY s.id),'[]'::json)
     FROM mission_subjects ms JOIN subjects s ON s.id=ms.subject_id WHERE ms.mission_id=m.id) AS subjects`;
@@ -25,26 +47,12 @@ export default function insight({ app, S, T, own, view, wrap, all, get, run, tx 
 
   // ---------- missions: create (teacher) and list (student) ----------
   app.post('/api/classes/:id/missions', T, own, wrap(async (req, res) => {
-    const { title, description, points, subjects: subj, deadline } = req.body;
-    if (!title || !(points > 0)) return res.status(400).json({ error: 'Title and points required' });
-    const known = await all('SELECT id,slug FROM subjects'), slugs = [...new Set(Array.isArray(subj) && subj.length ? subj : ['environment'])];
-    const ids = slugs.map(s => known.find(k => k.slug === s)?.id); if (ids.some(i => !i)) return res.status(400).json({ error: 'Unknown subject' });
-    let dl = null;
-    if (deadline) { // 'YYYY-MM-DD' means the end of that day in the app timezone
-      const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(deadline);
-      try { dl = (await get(dateOnly ? `SELECT ((?::date + 1)::timestamp AT TIME ZONE ?::text) - interval '1 second' AS d` : 'SELECT ?::timestamptz AS d', ...(dateOnly ? [deadline, TZ] : [deadline]))).d; }
-      catch (e) { if (String(e.code).startsWith('22')) return res.status(400).json({ error: 'Invalid deadline' }); throw e; }
-      if (new Date(dl) < new Date()) return res.status(400).json({ error: 'Deadline is in the past' });
-    }
-    let id;
-    await tx(async x => {
-      id = (await x('INSERT INTO missions(class_id,title,description,points,deadline) VALUES(?,?,?,?,?) RETURNING id', +req.params.id, title, description || '', Math.min(+points, 100), dl)).rows[0].id;
-      for (const sid of ids) await x('INSERT INTO mission_subjects(mission_id,subject_id) VALUES(?,?)', id, sid);
-    });
+    const m = await parseMission(req.body, all, get); if (m.error) return res.status(400).json({ error: m.error });
+    let id; await tx(async x => { id = await insertMission(x, +req.params.id, m); });
     res.json({ ok: true, id });
   }));
 
-  app.get('/api/missions', S, wrap(async (req, res) => res.json(await all(`SELECT m.id,m.title,m.description,m.points,m.deadline,(m.deadline IS NOT NULL AND m.deadline < NOW()) AS closed,c.name AS class_name,${SUBJ_JSON},
+  app.get('/api/missions', S, wrap(async (req, res) => res.json(await all(`SELECT m.id,m.title,m.description,m.points,m.deadline,(m.deadline IS NOT NULL AND m.deadline < NOW()) AS closed,c.name AS class_name,m.project_id,(SELECT p.title FROM projects p WHERE p.id=m.project_id) AS project,${SUBJ_JSON},
     (SELECT status FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS status,
     (SELECT awarded FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS awarded
     FROM missions m JOIN classes c ON c.id=m.class_id JOIN enrollments e ON e.class_id=c.id AND e.student_id=? ORDER BY m.id DESC`, req.user.id, req.user.id, req.user.id))));
