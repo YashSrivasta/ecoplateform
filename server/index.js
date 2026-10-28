@@ -1,6 +1,7 @@
 import express from 'express'; import cors from 'cors'; import pg from 'pg';
 import bcrypt from 'bcryptjs'; import jwt from 'jsonwebtoken'; import multer from 'multer';
 import fs from 'fs'; import crypto from 'crypto';
+import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js';
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET || !process.env.DATABASE_URL) { console.error('Set JWT_SECRET and DATABASE_URL'); process.exit(1); }
 pg.types.setTypeParser(20, parseInt); pg.types.setTypeParser(1700, parseFloat); // bigint/numeric -> JS numbers
@@ -9,6 +10,7 @@ const q = s => { let i = 0; return s.replace(/\?/g, () => '$' + ++i); }; // keep
 const all = async (s, ...p) => (await pool.query(q(s), p)).rows, get = async (s, ...p) => (await all(s, ...p))[0], run = (s, ...p) => pool.query(q(s), p);
 const tx = async fn => { const c = await pool.connect(); try { await c.query('BEGIN'); await fn((s, ...p) => c.query(q(s), p)); await c.query('COMMIT'); } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); } };
 await pool.query(fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+await pool.query(fs.readFileSync(new URL('./migrate.sql', import.meta.url), 'utf8')); // v2 upgrade: idempotent, keeps all data
 if (!(await get('SELECT 1 FROM quizzes'))) { // starter question bank (content, not users)
   for (const r of [[1,5,1,'Which bin is best for banana peels?',['Compost','Plastic recycling','Glass'],0],
    [1,5,1,'What do plants give us that we breathe?',['Smoke','Oxygen','Dust'],1],
@@ -20,6 +22,10 @@ if (!(await get('SELECT 1 FROM quizzes'))) { // starter question bank (content, 
    [13,20,4,'Eutrophication is mainly caused by excess…',['Nutrients like nitrates and phosphates','Sunlight','Salt'],0]])
     await run('INSERT INTO quizzes(grade_min,grade_max,difficulty,question,options,answer) VALUES(?,?,?,?,?,?)', r[0], r[1], r[2], r[3], JSON.stringify(r[4]), r[5]);
 }
+await run("UPDATE quizzes SET subject_id=(SELECT id FROM subjects WHERE slug='environment') WHERE subject_id IS NULL"); // the starter questions above are Environment
+if (!(await get("SELECT 1 FROM quizzes q JOIN subjects s ON s.id=q.subject_id WHERE s.slug<>'environment'"))) // add the other subjects once
+  for (const [slug, gmin, gmax, diff, text, opts, ans] of QUESTIONS)
+    await run('INSERT INTO quizzes(subject_id,grade_min,grade_max,difficulty,question,options,answer) VALUES((SELECT id FROM subjects WHERE slug=?),?,?,?,?,?,?)', slug, gmin, gmax, diff, text, JSON.stringify(opts), ans);
 fs.mkdirSync('uploads', { recursive: true });
 const upload = multer({ storage: multer.diskStorage({ destination: 'uploads', filename: (_, f, cb) => cb(null, crypto.randomUUID() + '.' + (f.originalname.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')) }),
   limits: { fileSize: 5e6 }, fileFilter: (_, f, cb) => cb(null, /^image\//.test(f.mimetype)) });
@@ -54,32 +60,20 @@ const S = auth(['student']);
 const points = async id => (await get('SELECT COALESCE(SUM(points),0) AS p FROM activity WHERE student_id=?', id)).p;
 const myClasses = id => all('SELECT c.id,c.name,c.code,u.name AS teacher FROM enrollments e JOIN classes c ON c.id=e.class_id JOIN users u ON u.id=c.teacher_id WHERE e.student_id=?', id);
 const needClass = wrap(async (req, res, next) => (await myClasses(req.user.id)).length ? next() : res.status(403).json({ error: 'Join a class with a class code first' }));
-const BADGES = [[10, 'Seedling', '🌱'], [50, 'Sprout', '🌿'], [100, 'Tree Hugger', '🌳'], [250, 'Eco Warrior', '🦸'], [500, 'Planet Guardian', '🌍']];
 app.post('/api/classes/join', S, wrap(async (req, res) => {
   const c = await get('SELECT * FROM classes WHERE code=?', (req.body.code || '').trim().toUpperCase()); if (!c) return res.status(404).json({ error: 'No class with that code' });
   await run('INSERT INTO enrollments VALUES(?,?) ON CONFLICT DO NOTHING', req.user.id, c.id); res.json({ ok: true, class: c.name }); }));
 app.get('/api/student/dashboard', S, wrap(async (req, res) => {
   const p = await points(req.user.id), me = await get('SELECT * FROM users WHERE id=?', req.user.id);
-  res.json({ user: pub(me), classes: await myClasses(me.id), points: p, level: Math.floor(p / 100) + 1, levelProgress: p % 100,
+  res.json({ user: pub(me), classes: await myClasses(me.id), points: p, streak: await streakOf(get, me.id), level: Math.floor(p / 100) + 1, levelProgress: p % 100,
     badges: BADGES.map(([at, name, icon]) => ({ at, name, icon, earned: p >= at })), activity: await all('SELECT text,points,created_at FROM activity WHERE student_id=? ORDER BY id DESC LIMIT 20', me.id),
     chart: (await all(`SELECT to_char(created_at,'YYYY-MM-DD') AS day, SUM(points) AS points FROM activity WHERE student_id=? GROUP BY 1 ORDER BY 1 DESC LIMIT 14`, me.id)).reverse() }); }));
-app.get('/api/quizzes', S, needClass, wrap(async (req, res) => {
-  const g = (await get('SELECT grade FROM users WHERE id=?', req.user.id)).grade;
-  res.json((await all('SELECT q.id,q.difficulty,q.question,q.options,a.correct FROM quizzes q LEFT JOIN quiz_attempts a ON a.quiz_id=q.id AND a.student_id=? WHERE ? BETWEEN q.grade_min AND q.grade_max ORDER BY q.difficulty,q.id', req.user.id, g)).map(x => ({ ...x, options: JSON.parse(x.options) }))); }));
-app.post('/api/quizzes/:id/answer', S, needClass, wrap(async (req, res) => {
-  const z = await get('SELECT * FROM quizzes WHERE id=?', req.params.id); if (!z) return res.status(404).json({ error: 'Quiz not found' });
-  if (await get('SELECT 1 FROM quiz_attempts WHERE student_id=? AND quiz_id=?', req.user.id, z.id)) return res.status(409).json({ error: 'Already answered' });
-  const ok = +req.body.choice === z.answer, pts = ok ? z.difficulty * 5 : 0;
-  await tx(async x => { await x('INSERT INTO quiz_attempts VALUES(?,?,?)', req.user.id, z.id, ok ? 1 : 0); if (ok) await x('INSERT INTO activity(student_id,kind,text,points) VALUES(?,?,?,?)', req.user.id, 'quiz', 'Correct quiz answer', pts); });
-  res.json({ correct: ok, answer: z.answer, points: pts }); }));
-app.get('/api/missions', S, wrap(async (req, res) => res.json(await all(`SELECT m.id,m.title,m.description,m.points,c.name AS class_name,
-  (SELECT status FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS status,
-  (SELECT awarded FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS awarded
-  FROM missions m JOIN classes c ON c.id=m.class_id JOIN enrollments e ON e.class_id=c.id AND e.student_id=? ORDER BY m.id DESC`, req.user.id, req.user.id, req.user.id))));
+learn({ app, auth, S, needClass, wrap, all, get, run, tx }); // subjects, quiz hub, streaks, daily challenges (learn.js)
 app.post('/api/missions/:id/submit', S, needClass, upload.single('photo'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Attach a photo as evidence' });
   const m = await get('SELECT m.* FROM missions m JOIN enrollments e ON e.class_id=m.class_id AND e.student_id=? WHERE m.id=?', req.user.id, req.params.id);
   if (!m) return res.status(403).json({ error: 'This mission is not in your class' });
+  if (m.deadline && new Date(m.deadline) < new Date()) return res.status(403).json({ error: 'The deadline for this mission has passed' });
   if (await get(`SELECT 1 FROM submissions WHERE mission_id=? AND student_id=? AND status IN('pending','approved')`, m.id, req.user.id)) return res.status(409).json({ error: 'Already submitted' });
   await run('INSERT INTO submissions(mission_id,student_id,photo) VALUES(?,?,?)', m.id, req.user.id, '/uploads/' + req.file.filename); res.json({ ok: true }); }));
 app.post('/api/doubts', S, needClass, wrap(async (req, res) => {
@@ -106,9 +100,7 @@ app.post('/api/teacher/classes/join', T, wrap(async (req, res) => { // add anoth
 app.get('/api/classes/:id/students', T, view, wrap(async (req, res) => res.json(await all(`SELECT u.id,u.name,u.grade,u.photo,COALESCE((SELECT SUM(points) FROM activity WHERE student_id=u.id),0) AS points,
   (SELECT COUNT(*) FROM submissions s JOIN missions m ON m.id=s.mission_id WHERE s.student_id=u.id AND m.class_id=? AND s.status='approved') AS missions_done
   FROM enrollments e JOIN users u ON u.id=e.student_id WHERE e.class_id=? ORDER BY points DESC`, +req.params.id, +req.params.id))));
-app.post('/api/classes/:id/missions', T, own, wrap(async (req, res) => {
-  const { title, description, points } = req.body; if (!title || !(points > 0)) return res.status(400).json({ error: 'Title and points required' });
-  await run('INSERT INTO missions(class_id,title,description,points) VALUES(?,?,?,?)', +req.params.id, title, description || '', Math.min(+points, 100)); res.json({ ok: true }); }));
+insight({ app, S, T, own, view, wrap, all, get, run, tx }); // missions (subjects + deadline), impact, leaderboard, analytics, suggestions (insight.js)
 app.get('/api/classes/:id/submissions', T, view, wrap(async (req, res) => res.json(await all(`SELECT s.id,s.photo,s.status,s.awarded,s.created_at,u.name AS student,m.title,m.points AS max_points
   FROM submissions s JOIN missions m ON m.id=s.mission_id JOIN users u ON u.id=s.student_id WHERE m.class_id=? ORDER BY (s.status='pending') DESC, s.id DESC`, +req.params.id))));
 app.post('/api/submissions/:id/review', T, wrap(async (req, res) => {
@@ -118,7 +110,7 @@ app.post('/api/submissions/:id/review', T, wrap(async (req, res) => {
   if (s.status !== 'pending') return res.status(409).json({ error: 'Already reviewed' });
   const approve = !!req.body.approve, pts = approve ? Math.max(0, Math.min(req.body.points == null ? s.max_points : +req.body.points, s.max_points)) : 0;
   await tx(async x => { await x('UPDATE submissions SET status=?,awarded=?,reviewed_at=NOW() WHERE id=?', approve ? 'approved' : 'rejected', pts, s.id);
-    if (approve) await x('INSERT INTO activity(student_id,kind,text,points) VALUES(?,?,?,?)', s.student_id, 'mission', 'Mission approved: ' + s.title, pts); });
+    if (approve) await awardMission(x, s, pts); }); // splits points across the mission's subjects, counts toward the streak
   res.json({ ok: true, points: pts }); }));
 app.get('/api/classes/:id/assessment', T, view, wrap(async (req, res) => res.json(await all(`SELECT u.name,u.grade,
   COALESCE((SELECT SUM(awarded) FROM submissions s JOIN missions m ON m.id=s.mission_id WHERE s.student_id=u.id AND m.class_id=? AND s.status='approved'),0) AS mission_points,
