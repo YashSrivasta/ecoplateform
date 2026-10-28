@@ -29,13 +29,13 @@ function Shell({ role, links }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } });
+  const [user, setUser] = useState(() => { try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; } });
   const [toast, setToast] = useState(null);
   const timer = useRef();
   const nav = useNavigate();
   const notify = useCallback((message, ms = 4000) => { clearTimeout(timer.current); setToast({ message, id: Date.now() }); timer.current = setTimeout(() => setToast(null), ms); }, []);
-  const login = ({ token, user }) => { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); setUser(user); nav('/' + user.role); };
-  const logout = () => { localStorage.clear(); setUser(null); nav('/login'); };
+  const login = ({ token, user }) => { sessionStorage.setItem('token', token); sessionStorage.setItem('user', JSON.stringify(user)); // per tab, so a teacher tab and a student tab never share a login setUser(user); nav('/' + user.role); };
+  const logout = () => { sessionStorage.clear(); localStorage.clear(); setUser(null); nav('/login'); };
   return (
     <AuthCtx.Provider value={{ user, login, logout }}>
       <ToastCtx.Provider value={notify}>
