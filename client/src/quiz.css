@@ -1,0 +1,8 @@
+/* Quiz hub (Stage 6.4) */
+.subject-filter { display: flex; gap: .5rem; flex-wrap: wrap; }
+.subject-filter button { font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border-radius: 999px; border: 1.5px solid var(--field-line); background: transparent; color: var(--on); cursor: pointer; }
+.subject-filter button:hover { border-color: var(--c, var(--lime)); }
+.subject-filter button[aria-pressed="true"] { background: var(--c, var(--lime)); border-color: var(--c, var(--lime)); color: #10140a; }
+.quiz-meta { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.quiz-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.opt .mark { font-weight: 700; font-size: .85rem; white-space: nowrap; display: inline-flex; align-items: center; gap: .3rem; }

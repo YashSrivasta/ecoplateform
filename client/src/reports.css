@@ -1,0 +1,14 @@
+/* Reports (Stage 7.6) */
+.rp-tools { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+.rp-tools .seg { flex: 1 1 18rem; max-width: 26rem; }
+.rp-pick { display: flex; gap: .5rem .75rem; flex-wrap: wrap; margin-top: .75rem; border: 0; padding: 0; min-width: 0; }
+.rp-pick label { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem 1rem; border: 1.5px solid var(--field-line); border-radius: 999px; font-weight: 600; cursor: pointer; }
+.rp-pick label:has(input:checked) { background: var(--lime); color: var(--lime-ink); border-color: var(--lime); }
+.rp-pick input { width: 1rem; height: 1rem; padding: 0; accent-color: #10140a; }
+.rp-sheet-head { display: none; }
+@media print {
+  .rp-sheet-head { display: block; margin-bottom: 1rem; }
+  .rp-tools, .rp-pick { display: none !important; }
+  main { max-width: none; padding: 0; }
+  .card { break-inside: avoid; }
+}

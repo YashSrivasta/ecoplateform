@@ -1,0 +1,14 @@
+/* Student dashboard cards (Stage 6.1) */
+.cards-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1.125rem; }
+.streak { display: flex; align-items: center; gap: 1rem; }
+.streak .flame { width: 3.5rem; height: 3.5rem; border-radius: 50%; display: grid; place-items: center; background: var(--tile); color: var(--on-muted); flex: none; }
+.streak.hot .flame { background: var(--lime); color: var(--lime-ink); }
+.streak .big { margin: 0; }
+.streak-state { display: inline-flex; align-items: center; gap: .4rem; margin-top: .5rem; font-weight: 600; font-size: .9rem; }
+.next-badge { display: flex; align-items: center; gap: 1rem; }
+.next-badge .em { font-size: 2.4rem; width: 3.5rem; height: 3.5rem; display: grid; place-items: center; border-radius: 50%; background: var(--tile); flex: none; }
+.next-badge .bar { margin: .5rem 0 .25rem; }
+.suggest { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .9rem 0; border-top: 1px solid var(--row-line); }
+.suggest:first-of-type { border-top: 0; }
+.suggest .txt { flex: 1 1 14rem; min-width: 0; }
+.suggest .txt b { display: block; font-weight: 600; }

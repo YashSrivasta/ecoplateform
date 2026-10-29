@@ -1,0 +1,13 @@
+/* Daily challenges widget (Stage 6.2) */
+.daily-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem; margin-top: 1rem; }
+.dtab { font: inherit; color: var(--on); text-align: left; background: var(--tile); border: 2px solid transparent; border-radius: 1.25rem; padding: .85rem 1rem; cursor: pointer; display: flex; flex-direction: column; gap: .15rem; }
+.dtab:not(:disabled):hover { border-color: var(--c, var(--lime)); }
+.dtab[aria-expanded="true"] { border-color: var(--c, var(--lime)); background: var(--field); }
+.dtab:disabled { cursor: default; opacity: .75; }
+.dtab .em { font-size: 1.6rem; line-height: 1.2; }
+.dtab b { font-weight: 600; }
+.dtab small { color: var(--on-muted); font-size: .8rem; font-weight: 500; display: inline-flex; align-items: center; gap: .3rem; }
+.dtab.done small { color: var(--lime); }
+.daily-q { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--row-line); }
+.daily-q .quiz-q { margin-top: .5rem; }
+.opt .mark { font-weight: 700; font-size: .85rem; white-space: nowrap; display: inline-flex; align-items: center; gap: .3rem; }

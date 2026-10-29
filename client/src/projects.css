@@ -1,0 +1,10 @@
+/* Projects: classes working together (Stage 7.4) */
+.pj-invite { display: flex; align-items: center; gap: .75rem 1rem; flex-wrap: wrap; padding: .8rem 0; border-top: 1px solid var(--row-line); }
+.pj-invite:first-of-type { border-top: 0; }
+.pj-invite .txt { flex: 1 1 16rem; min-width: 0; }
+.pj-card h3 { font-size: 1.35rem; font-weight: 500; }
+.pj-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.pj-classes { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.pj-classes .chip small { opacity: .75; font-weight: 500; }
+.pj-body { margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--row-line); }
+.pj-body h4 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 600; }

@@ -1,0 +1,9 @@
+/* Missions (Stage 6.5) */
+.mission-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.mission .subj { display: inline-flex; align-items: center; gap: .3rem; }
+.deadline { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; font-size: .9rem; }
+.preview { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; width: 100%; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--row-line); }
+.preview img { width: 9rem; height: 7rem; object-fit: cover; border-radius: 1.25rem; background: var(--tile); }
+.preview .txt { flex: 1 1 12rem; min-width: 0; }
+.preview .txt b { display: block; word-break: break-word; }
+.mission { flex-wrap: wrap; }

@@ -1,0 +1,13 @@
+/* Profile and portfolio (Stage 6.7) */
+.pf-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; margin: 1rem 0 1.5rem; }
+.pf-sec { margin-top: 1.75rem; }
+.pf-sec h3 { margin-bottom: .5rem; }
+.pf-missions { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .9rem; margin-top: .75rem; }
+.pf-mission { background: var(--tile); border-radius: 1.25rem; padding: .75rem; display: flex; flex-direction: column; gap: .5rem; }
+.pf-mission .proof { width: 100%; height: 7rem; }
+.pf-mission b { font-weight: 600; }
+.pf-mission .chips { margin: 0; }
+.pf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.photo-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
+.photo-row img.prev { width: 5rem; height: 5rem; border-radius: 50%; object-fit: cover; }
+@media print { .pf-mission { break-inside: avoid; } }

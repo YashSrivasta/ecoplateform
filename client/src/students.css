@@ -1,0 +1,14 @@
+/* Students list and portfolio (Stage 7.7) */
+.st-tools { display: flex; gap: .75rem 1rem; flex-wrap: wrap; align-items: center; }
+.st-tools input[type=search] { flex: 1 1 14rem; width: auto; }
+.st-tools select { flex: 0 1 12rem; width: auto; }
+.st-row { display: flex; align-items: center; gap: .9rem; padding: 1rem 0; border-top: 1px solid var(--row-line); flex-wrap: wrap; }
+.st-row:first-child { border-top: 0; padding-top: .25rem; }
+.st-row .who { flex: 1 1 12rem; min-width: 0; }
+.st-row .who b { display: block; font-weight: 600; font-size: 1rem; overflow-wrap: anywhere; }
+.st-row .score { width: 9rem; text-align: right; }
+.st-row .score .n { font-size: 1.5rem; font-weight: 300; }
+.st-row .score .n small { font-size: .8rem; color: var(--on-muted); margin-left: .25rem; }
+.st-row .score .bar { margin-top: .35rem; min-width: 0; }
+.st-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.st-head .who { flex: 1 1 14rem; }
