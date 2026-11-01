@@ -4,3 +4,8 @@
 .share-row .btn { padding: .4rem .85rem; font-size: .85rem; }
 .share-fresh { border: 2px solid var(--ink); border-radius: 1.25rem; padding: 1rem 1.1rem; margin: .75rem 0; }
 .share-code { font-size: 2.25rem; font-weight: 700; letter-spacing: .15em; line-height: 1.2; overflow-wrap: anywhere; }
+
+/* removing a class */
+.remove-panel { border: 2px dashed var(--ink); border-radius: 1.25rem; padding: 1rem 1.1rem; margin: .5rem 0 .75rem; }
+.remove-list { margin: .4rem 0 .6rem; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .2rem; }
+.class-row .btn-danger, .class-row .btn-line { padding: .4rem .85rem; font-size: .85rem; }

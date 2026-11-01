@@ -3,7 +3,7 @@ dotenv.config();
 import express from 'express'; import cors from 'cors'; import pg from 'pg';
 import bcrypt from 'bcryptjs'; import jwt from 'jsonwebtoken'; import multer from 'multer';
 import fs from 'fs'; import crypto from 'crypto';
-import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js'; import authx from './authx.js'; import collab from './collab.js'; import quizbuilder from './quizbuilder.js'; import footprint from './footprint.js'; import announcements from './announcements.js'; import teamchallenge from './teamchallenge.js'; import aifeedback from './aifeedback.js';
+import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js'; import authx from './authx.js'; import collab from './collab.js'; import quizbuilder from './quizbuilder.js'; import footprint from './footprint.js'; import announcements from './announcements.js'; import teamchallenge from './teamchallenge.js'; import aifeedback from './aifeedback.js'; import classremove from './classremove.js';
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET || !process.env.DATABASE_URL) { console.error('Set JWT_SECRET and DATABASE_URL'); process.exit(1); }
 pg.types.setTypeParser(20, parseInt); pg.types.setTypeParser(1700, parseFloat); // bigint/numeric -> JS numbers
@@ -104,6 +104,7 @@ app.get('/api/classes/:id/students', T, view, wrap(async (req, res) => res.json(
   FROM enrollments e JOIN users u ON u.id=e.student_id WHERE e.class_id=? ORDER BY points DESC`, +req.params.id, +req.params.id))));
 insight({ app, S, T, own, view, wrap, all, get, run, tx }); // missions (subjects + deadline), impact, leaderboard, analytics, suggestions (insight.js)
 quizbuilder({ app, T, own, view, wrap, all, get, run }); // teachers write quiz questions for their own class (quizbuilder.js)
+classremove({ app, T, own, wrap, all, get, run, tx }); // remove a class for good, or take a view-only class off your list (classremove.js)
 aifeedback({ app, T, wrap, get }); // optional AI note suggestion on the Review page, off until GEMINI_API_KEY is set (aifeedback.js)
 teamchallenge({ app, S, T, own, view, wrap, all, get, run, tx }); // team challenges between groups of students (teamchallenge.js)
 announcements({ app, S, T, own, view, wrap, all, get, run }); // class notice board (announcements.js)
