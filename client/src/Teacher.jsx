@@ -4,6 +4,7 @@ import { api } from './api';
 import { Avatar, Pick, Proof, fmtDate, useAuth, useToast } from './ui';
 import MissionForm from './MissionForm';
 import ClassFootprint from './ClassFootprint';
+import { ShareButtons, NewClassPanel } from './ShareClass';
 export { default as Review } from './Review';
 export { default as Students } from './Students';
 export { default as Assessment } from './Assessment';
@@ -11,7 +12,7 @@ export { default as Report } from './Reports';
 
 export function TDash() {
   const ctx = useOutletContext(), { user } = useAuth(), toast = useToast();
-  const [name, setName] = useState(''), [code, setCode] = useState(''), [err, setErr] = useState('');
+  const [name, setName] = useState(''), [code, setCode] = useState(''), [err, setErr] = useState(''), [fresh, setFresh] = useState(null);
   const owned = ctx.classes.filter(c => c.owner);
   const target = owned.find(c => c.id === ctx.classId) || owned[0];
   const students = ctx.classes.reduce((a, c) => a + c.students, 0);
@@ -28,17 +29,19 @@ export function TDash() {
       <section className="card">
         <h2>My classes</h2>
         {ctx.classes.length === 0 && <p className="muted">You have no classes yet. Name one below to get a class code for your students.</p>}
+        {fresh && <NewClassPanel {...fresh} onClose={() => setFresh(null)} />}
         <div style={{ marginTop: 8 }}>
           {ctx.classes.map(c => (
             <div className="class-row" key={c.id}>
               <b>{c.name}</b>
               <span className="muted">{c.students} students</span>
               <span className="chip lime code" aria-label={`Class code ${c.code}`}>{c.code}</span>
+              {c.owner && <ShareButtons code={c.code} name={c.name} />}
               {!c.owner && <span className="chip warn">View only · by {c.creator}</span>}
             </div>
           ))}
         </div>
-        <form className="row" onSubmit={e => { e.preventDefault(); run(async () => { const r = await api('/teacher/classes', { method: 'POST', body: { name } }); setName(''); toast('Class created. Code: ' + r.code, 8000); }); }}>
+        <form className="row" onSubmit={e => { e.preventDefault(); run(async () => { const r = await api('/teacher/classes', { method: 'POST', body: { name } }); setFresh({ name: name.trim(), code: r.code }); setName(''); toast('Class created'); }); }}>
           <input aria-label="New class name" placeholder="New class name" value={name} onChange={e => setName(e.target.value)} required />
           <button className="btn btn-primary">Generate class code</button>
         </form>

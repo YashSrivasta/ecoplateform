@@ -61,6 +61,10 @@ const needClass = wrap(async (req, res, next) => (await myClasses(req.user.id)).
 app.post('/api/classes/join', S, wrap(async (req, res) => {
   const c = await get('SELECT * FROM classes WHERE code=?', (req.body.code || '').trim().toUpperCase()); if (!c) return res.status(404).json({ error: 'No class with that code' });
   await run('INSERT INTO enrollments VALUES(?,?) ON CONFLICT DO NOTHING', req.user.id, c.id); res.json({ ok: true, class: c.name }); }));
+// shows a student which class a share link is for, before they confirm joining (name of the class and its teacher only)
+app.get('/api/classes/preview/:code', S, wrap(async (req, res) => {
+  const c = await get('SELECT c.name, u.name AS teacher FROM classes c JOIN users u ON u.id=c.teacher_id WHERE c.code=?', String(req.params.code).trim().toUpperCase());
+  c ? res.json(c) : res.status(404).json({ error: 'No class with that code' }); }));
 app.get('/api/student/dashboard', S, wrap(async (req, res) => {
   const p = await points(req.user.id), me = await get('SELECT * FROM users WHERE id=?', req.user.id);
   res.json({ user: pub(me), classes: await myClasses(me.id), points: p, streak: await streakOf(get, me.id), level: Math.floor(p / 100) + 1, levelProgress: p % 100,

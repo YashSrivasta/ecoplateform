@@ -1,0 +1,6 @@
+/* Class code and share buttons (teacher dashboard) */
+.class-row { flex-wrap: wrap; }
+.share-row { display: inline-flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.share-row .btn { padding: .4rem .85rem; font-size: .85rem; }
+.share-fresh { border: 2px solid var(--ink); border-radius: 1.25rem; padding: 1rem 1.1rem; margin: .75rem 0; }
+.share-code { font-size: 2.25rem; font-weight: 700; letter-spacing: .15em; line-height: 1.2; overflow-wrap: anywhere; }

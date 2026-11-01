@@ -10,6 +10,7 @@ import QuizBuilder from './QuizBuilder';
 import Footprint from './Footprint';
 import Announcements from './Announcements';
 import TeamChallenges from './TeamChallenges';
+import JoinLink from './JoinLink';
 import { TDash, Students, Review, Assessment, Report } from './Teacher';
 import { AuthCtx, ToastCtx, Icon, useAuth } from './ui';
 import { A11yBar, useA11y } from './a11y';
@@ -59,7 +60,10 @@ export default function App() {
   const login = ({ token, user }) => {
     // sessionStorage = per browser tab, so a teacher tab and a student tab never share a login
     sessionStorage.setItem('token', token); sessionStorage.setItem('user', JSON.stringify(user));
-    setUser(user); nav('/' + user.role);
+    setUser(user);
+    let dest = '/' + user.role; // a student who came from a class share link goes back to it to join
+    if (user.role === 'student') { try { const c = sessionStorage.getItem('joinCode'); if (c) dest = '/join/' + c; } catch {} }
+    nav(dest);
   };
   const logout = () => { sessionStorage.clear(); setUser(null); nav('/login'); }; // keeps text-size choice (localStorage)
   return (
@@ -67,6 +71,7 @@ export default function App() {
       <ToastCtx.Provider value={notify}>
        <CelebrateProvider>
         <Routes>
+          <Route path="/join/:code" element={<JoinLink />} />
           <Route path="/login" element={user ? <Navigate to={'/' + user.role} /> : <Login />} />
           <Route path="/student" element={<Shell role="student" links={[['/student', 'Dashboard', 'grid'], ['/student/quizzes', 'Quiz Hub', 'quiz'], ['/student/tasks', 'Tasks', 'tasks'], ['/student/footprint', 'Footprint', 'leaf'], ['/student/leaderboard', 'Leaderboard', 'trophy'], ['/student/profile', 'Profile', 'user']]} />}>
             <Route index element={<SDash />} /><Route path="quizzes" element={<Quizzes />} /><Route path="tasks" element={<Tasks />} /><Route path="footprint" element={<Footprint />} /><Route path="leaderboard" element={<Leaderboard />} /><Route path="profile" element={<Profile />} />
