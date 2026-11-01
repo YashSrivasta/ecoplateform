@@ -11,6 +11,8 @@ import Footprint from './Footprint';
 import Announcements from './Announcements';
 import TeamChallenges from './TeamChallenges';
 import JoinLink from './JoinLink';
+import ForgotPassword from './ForgotPassword';
+import ResetPassword from './ResetPassword';
 import { TDash, Students, Review, Assessment, Report } from './Teacher';
 import { AuthCtx, ToastCtx, Icon, useAuth } from './ui';
 import { A11yBar, useA11y } from './a11y';
@@ -72,6 +74,8 @@ export default function App() {
        <CelebrateProvider>
         <Routes>
           <Route path="/join/:code" element={<JoinLink />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/login" element={user ? <Navigate to={'/' + user.role} /> : <Login />} />
           <Route path="/student" element={<Shell role="student" links={[['/student', 'Dashboard', 'grid'], ['/student/quizzes', 'Quiz Hub', 'quiz'], ['/student/tasks', 'Tasks', 'tasks'], ['/student/footprint', 'Footprint', 'leaf'], ['/student/leaderboard', 'Leaderboard', 'trophy'], ['/student/profile', 'Profile', 'user']]} />}>
             <Route index element={<SDash />} /><Route path="quizzes" element={<Quizzes />} /><Route path="tasks" element={<Tasks />} /><Route path="footprint" element={<Footprint />} /><Route path="leaderboard" element={<Leaderboard />} /><Route path="profile" element={<Profile />} />

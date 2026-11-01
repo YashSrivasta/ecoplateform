@@ -126,3 +126,10 @@ ALTER TABLE missions ADD COLUMN IF NOT EXISTS topic TEXT;
 -- ---------- teacher feedback on a mission photo ----------
 -- A short note the teacher writes when approving or rejecting; the student sees it on the Tasks page. NULL = no note.
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS feedback TEXT;
+
+-- ---------- forgot password by email ----------
+-- One row per pending reset link. Only a SHA-256 of the secret is stored, the link is single use and expires after 30 minutes.
+CREATE TABLE IF NOT EXISTS password_resets(
+  id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE, expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);

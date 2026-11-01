@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from './api';
 import { Icon, useAuth } from './ui';
 import { A11yBar } from './a11y';
@@ -142,6 +143,7 @@ export default function Login() {
             <button type="button" className="link" onClick={() => setShow(s => !s)} aria-pressed={show}>{show ? 'Hide' : 'Show'}</button>
           </span>
         </label>
+        {!reg && <div style={{ textAlign: 'right', marginTop: '-.25rem' }}><Link className="link" to="/forgot-password">Forgot password?</Link></div>}
         {reg && <Meter pw={f.password} />}
         {err && <p className="alert" role="alert"><Icon name="alert" size={18} /> {err}</p>}
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Please wait…' : reg ? 'Sign up' : 'Log in'}</button>
