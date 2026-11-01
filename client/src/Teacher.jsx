@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from './api';
 import { Avatar, Pick, Proof, fmtDate, useAuth, useToast } from './ui';
 import MissionForm from './MissionForm';
+import ClassFootprint from './ClassFootprint';
 export { default as Review } from './Review';
 export { default as Students } from './Students';
 export { default as Assessment } from './Assessment';
@@ -46,6 +47,7 @@ export function TDash() {
           <button className="btn btn-line">Add to my list</button>
         </form>
       </section>
+      <ClassFootprint ctx={ctx} />
       {target && <MissionForm classes={owned} classId={target.id} onClassChange={ctx.setClassId} />}
     </>
   );

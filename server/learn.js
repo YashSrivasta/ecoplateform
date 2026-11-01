@@ -10,7 +10,7 @@ export default function learn({ app, auth, S, needClass, wrap, all, get, run, tx
   async function dailyQuiz(day, subj, b) {
     let r = await get('SELECT quiz_id FROM daily_challenges WHERE day=?::date AND subject_id=? AND grade_band=?', day, subj.id, b);
     if (!r) {
-      const qs = await all('SELECT id FROM quizzes WHERE subject_id=? AND ? BETWEEN grade_min AND grade_max ORDER BY id', subj.id, BANDS[b][0]);
+      const qs = await all('SELECT id FROM quizzes WHERE subject_id=? AND class_id IS NULL AND ? BETWEEN grade_min AND grade_max ORDER BY id', subj.id, BANDS[b][0]);
       if (!qs.length) return null;
       const pick = qs[Math.floor(Date.parse(day + 'T00:00:00Z') / 864e5) % qs.length].id; // rotates through the bank day by day
       await run('INSERT INTO daily_challenges(day,subject_id,quiz_id,grade_band) VALUES(?::date,?,?,?) ON CONFLICT DO NOTHING', day, subj.id, pick, b);
@@ -26,14 +26,15 @@ export default function learn({ app, auth, S, needClass, wrap, all, get, run, tx
   // ---------- quiz hub ----------
   app.get('/api/quizzes', S, needClass, wrap(async (req, res) => {
     const g = (await get('SELECT grade FROM users WHERE id=?', req.user.id)).grade, slug = req.query.subject || null;
-    const rows = await all(`SELECT q.id,q.difficulty,q.question,q.options,a.correct,s.slug AS subject,s.name AS subject_name,s.color,s.icon
+    const rows = await all(`SELECT q.id,q.difficulty,q.question,q.options,(q.class_id IS NOT NULL) AS from_teacher,a.correct,s.slug AS subject,s.name AS subject_name,s.color,s.icon
       FROM quizzes q JOIN subjects s ON s.id=q.subject_id LEFT JOIN quiz_attempts a ON a.quiz_id=q.id AND a.student_id=?
-      WHERE ? BETWEEN q.grade_min AND q.grade_max AND (?::text IS NULL OR s.slug=?) ORDER BY s.id,q.difficulty,q.id`, req.user.id, g, slug, slug);
+      WHERE ? BETWEEN q.grade_min AND q.grade_max AND NOT q.archived AND (q.class_id IS NULL OR q.class_id IN (SELECT class_id FROM enrollments WHERE student_id=?)) AND (?::text IS NULL OR s.slug=?) ORDER BY s.id,q.difficulty,q.id`, req.user.id, g, req.user.id, slug, slug);
     res.json(rows.map(x => ({ ...x, options: JSON.parse(x.options) })));
   }));
 
   app.post('/api/quizzes/:id/answer', S, needClass, wrap(async (req, res) => {
     const z = Number.isInteger(+req.params.id) ? await get('SELECT * FROM quizzes WHERE id=?', +req.params.id) : null;
+    if (z && (z.archived || (z.class_id && !(await get('SELECT 1 FROM enrollments WHERE student_id=? AND class_id=?', req.user.id, z.class_id))))) return res.status(404).json({ error: 'Quiz not found' }); // a teacher's question is only for that class
     if (!z) return res.status(404).json({ error: 'Quiz not found' });
     const choice = pickChoice(req.body.choice, JSON.parse(z.options)); if (choice === null) return res.status(400).json({ error: 'Pick one of the options' });
     const ok = choice === z.answer, pts = ok ? z.difficulty * 5 : 0, id = req.user.id; let out;

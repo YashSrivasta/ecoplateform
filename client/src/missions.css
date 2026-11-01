@@ -7,3 +7,11 @@
 .preview .txt { flex: 1 1 12rem; min-width: 0; }
 .preview .txt b { display: block; word-break: break-word; }
 .mission { flex-wrap: wrap; }
+
+/* eco topic filter on the Tasks page */
+.topic-filter { display: flex; flex-wrap: wrap; gap: .5rem; margin: .25rem 0 1rem; }
+.topic-filter .chip { cursor: pointer; font: inherit; }
+.topic-filter .chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* teacher's note on a reviewed mission */
+.teacher-note { margin: .5rem 0 0; padding: .55rem .9rem; border-radius: 1rem; background: var(--tile); font-size: .95rem; overflow-wrap: anywhere; }

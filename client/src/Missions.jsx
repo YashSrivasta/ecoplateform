@@ -15,7 +15,7 @@ function when(m) {
   return { text: `Due ${fmtDate(m.deadline)} (${left} days left)` };
 }
 
-function Mission({ m, onSent }) {
+function Mission({ m, topics, onSent }) {
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState(null);
   const [err, setErr] = useState('');
@@ -50,9 +50,11 @@ function Mission({ m, onSent }) {
           <span className="chip">{m.class_name}</span>
           <span className="chip">{m.points} points{m.subjects?.length > 1 ? `, shared across ${m.subjects.length} subjects` : ''}</span>
           {m.project && <span className="chip"><Icon name="folder" size={14} />Project: {m.project}</span>}
+          {m.topic && <span className="chip">{(() => { const t = topics.find(x => x.slug === m.topic); return t ? <><span aria-hidden="true">{t.icon}</span> {t.name}</> : m.topic; })()}</span>}
           {(m.subjects || []).map(s => <span key={s.slug} className="chip subj" style={{ background: s.color, color: '#10140a' }}><span aria-hidden="true">{s.icon}</span>{s.name}</span>)}
         </div>
         {d && <p className={'deadline' + (d.warn ? ' ' : ' muted')} style={d.warn ? { color: 'var(--warn-fg)' } : undefined}><Icon name={d.warn ? 'alert' : 'tasks'} size={16} />{d.text}</p>}
+        {m.feedback && (m.status === 'approved' || m.status === 'rejected') && <p className="teacher-note"><b>Teacher's note:</b> {m.feedback}</p>}
       </div>
       <div className="mission-side">
         {m.status === 'pending' && <span className="chip warn">Waiting for review</span>}
@@ -78,6 +80,7 @@ export default function Missions() {
   const [ms, setMs] = useState(null);
   const [err, setErr] = useState('');
   const [classes, setClasses] = useState(null);
+  const [topics, setTopics] = useState([]), [pick, setPick] = useState('');
   const toast = useToast();
   const load = () => api('/missions').then(m => {
     setMs(m);
@@ -86,8 +89,9 @@ export default function Missions() {
     if (fresh.length) { toast(fresh.length === 1 ? `Work accepted: ${fresh[0].title} (+${fresh[0].awarded} points)` : `${fresh.length} missions accepted: +${fresh.reduce((a, x) => a + (+x.awarded || 0), 0)} points`, 6000); try { localStorage.setItem('seen', JSON.stringify([...seen, ...fresh.map(x => x.id)])); } catch {} }
   }).catch(e => { setErr(e.message); setMs([]); });
   const init = () => api('/student/dashboard').then(d => { setClasses(d.classes); if (d.classes.length) load(); }).catch(e => setErr(e.message));
-  useEffect(() => { init(); }, []);
-  const list = [...(ms || [])].sort((a, b) => !!a.closed - !!b.closed), todo = (ms || []).filter(m => (!m.status || m.status === 'rejected') && !m.closed).length;
+  useEffect(() => { init(); api('/mission-topics').then(setTopics).catch(() => {}); }, []);
+  const used = topics.filter(t => (ms || []).some(m => m.topic === t.slug)); // only offer topics that some mission actually has
+  const list = [...(ms || [])].filter(m => !pick || m.topic === pick).sort((a, b) => !!a.closed - !!b.closed), todo = (ms || []).filter(m => (!m.status || m.status === 'rejected') && !m.closed).length;
   return (
     <>
       <header className="page-head"><div><h1>Tasks</h1><p className="muted">Complete the mission, then upload a photo as proof. Points arrive after your teacher approves.</p></div>
@@ -96,7 +100,14 @@ export default function Missions() {
       {!classes && !err && <Loading />}
       {classes && !classes.length && <Join onDone={init} />}
       {classes?.length > 0 && ms && !ms.length && !err && <p className="muted">No missions yet. Your teacher will post some soon.</p>}
-      <div className="stack">{list.map(m => <Mission key={m.id} m={m} onSent={load} />)}</div>
+      {used.length > 0 && (
+        <div className="topic-filter" role="group" aria-label="Filter missions by eco topic">
+          <button type="button" className={'chip' + (!pick ? ' lime' : '')} aria-pressed={!pick} onClick={() => setPick('')}>All topics</button>
+          {used.map(t => <button type="button" key={t.slug} className={'chip' + (pick === t.slug ? ' lime' : '')} aria-pressed={pick === t.slug} onClick={() => setPick(pick === t.slug ? '' : t.slug)}><span aria-hidden="true">{t.icon}</span> {t.name}</button>)}
+        </div>
+      )}
+      {pick && !list.length && <p className="muted">No missions with this topic.</p>}
+      <div className="stack">{list.map(m => <Mission key={m.id} m={m} topics={topics} onSent={load} />)}</div>
     </>
   );
 }

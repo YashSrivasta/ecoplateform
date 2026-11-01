@@ -6,6 +6,15 @@ import Doubts from './Doubts';
 import './review.css';
 
 const TABS = [['pending', 'Waiting'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['all', 'All']];
+// One tap fills the note box with this text; the teacher can still change it before sending. Edit the wording here.
+const QUICK = [
+  ['Blurry photo', 'The photo is blurry. Please take a clearer one.'],
+  ['Activity not visible', "I can't see the activity in the photo. Please show what you did."],
+  ['Wrong mission', "This photo doesn't match the mission. Please read the mission again and try once more."],
+  ['Not your own work', 'Please send a photo of your own work.'],
+  ['Great work!', 'Great work! Keep it up.'],
+  ['Well done!', 'Well done! This shows real effort for our planet.'],
+];
 
 function Big({ s, onClose }) {
   const btn = useRef(null);
@@ -26,12 +35,22 @@ function Big({ s, onClose }) {
   );
 }
 
-function Card({ s, owner, onReview, onZoom }) {
+function Card({ s, owner, ai, onReview, onZoom }) {
   const [pts, setPts] = useState(s.max_points);
   const [bad, setBad] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false), [note, setNote] = useState(''), [thinking, setThinking] = useState(false), [aiMsg, setAiMsg] = useState('');
   const bounded = Math.max(0, Math.min(+s.max_points, Math.round(+pts) || 0));
-  const go = async ok => { setBusy(true); await onReview(s, ok, bounded); setBusy(false); };
+  // Asks the free AI to read this one photo and suggest a note. The teacher can change the text before sending.
+  const suggest = async () => {
+    setThinking(true); setAiMsg('');
+    try {
+      const r = await api(`/submissions/${s.id}/suggest-feedback`, { method: 'POST' });
+      setNote(r.note);
+      setAiMsg(r.verdict === 'ok' ? 'AI thinks this photo looks fine. Check it yourself.' : r.verdict === 'problem' ? 'AI found a possible problem. Check it yourself.' : 'AI suggestion. Check it yourself.');
+    } catch (e) { setAiMsg(e.message); }
+    setThinking(false);
+  };
+  const go = async ok => { setBusy(true); await onReview(s, ok, bounded, note); setBusy(false); };
   return (
     <article className="rv-card">
       {s.photo && !bad
@@ -41,9 +60,20 @@ function Card({ s, owner, onReview, onZoom }) {
         <div className="chips"><span className="chip">Max {s.max_points} pts</span>
           {s.status === 'approved' && <span className="chip lime"><Icon name="check" size={12} />Approved +{s.awarded}</span>}
           {s.status === 'rejected' && <span className="chip danger"><Icon name="close" size={12} />Rejected</span>}
-          {s.status === 'pending' && !owner && <span className="chip warn">Waiting</span>}</div></div>
+          {s.status === 'pending' && !owner && <span className="chip warn">Waiting</span>}</div>
+        {s.feedback && s.status !== 'pending' && <p className="rv-fb"><b>Note:</b> {s.feedback}</p>}</div>
       {s.status === 'pending' && owner && (
         <div className="rv-act">
+          {ai && (
+            <div className="rv-ai">
+              <button type="button" className="chip" disabled={thinking || busy} onClick={suggest}><Icon name="star" size={14} />{thinking ? 'AI is looking at the photo…' : 'Suggest note with AI'}</button>
+              {aiMsg && <span className="muted" role="status">{aiMsg}</span>}
+            </div>
+          )}
+          <div className="rv-quick" role="group" aria-label={`Quick notes for ${s.student}`}>
+            {QUICK.map(([label, text]) => <button type="button" key={label} className="chip" onClick={() => setNote(text)}>{label}</button>)}
+          </div>
+          <input className="rv-note" type="text" maxLength={300} placeholder="Note for the student (optional)" aria-label={`Note for ${s.student}`} value={note} onChange={e => setNote(e.target.value)} />
           <input type="number" min="0" max={s.max_points} value={pts} onChange={e => setPts(e.target.value)} aria-label={`Points for ${s.student}`} />
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => go(true)}>Approve</button>
           <button type="button" className="btn btn-danger" disabled={busy} onClick={() => go(false)}>Reject</button>
@@ -59,9 +89,11 @@ export default function Review() {
   const load = () => ctx.classId && api(`/classes/${ctx.classId}/submissions`).then(setSubs).catch(e => { setErr(e.message); setSubs([]); });
   useEffect(() => { setSubs(null); setErr(''); setMission(''); load(); }, [ctx.classId]);
   const owner = ctx.cls?.owner;
-  const review = async (s, approve, points) => {
+  const [ai, setAi] = useState(false); // is the free AI switched on at the server?
+  useEffect(() => { api('/ai/status').then(r => setAi(!!r.enabled)).catch(() => setAi(false)); }, []);
+  const review = async (s, approve, points, feedback) => {
     try {
-      await api(`/submissions/${s.id}/review`, { method: 'POST', body: { approve, points } }); setErr('');
+      await api(`/submissions/${s.id}/review`, { method: 'POST', body: { approve, points, feedback } }); setErr('');
       toast(approve ? `Approved ${s.student}'s work (+${points} points)` : `Rejected ${s.student}'s submission`);
       await load();
     } catch (e) { setErr(e.message); }
@@ -72,6 +104,7 @@ export default function Review() {
   return (
     <>
       <header className="page-head"><div><h1>Review</h1><p className="muted">Check each photo, then approve or reject it. Points go to the student when you approve.</p></div></header>
+      {ai && owner && <p className="muted rv-ai-note">AI note suggestions send one photo to Google's free AI, only when you tap the button. On Google's free plan the photo may be kept and read by Google staff, so avoid it for photos showing faces or personal details. Always check the note before you send it.</p>}
       <Pick ctx={ctx} />
       {ctx.cls && !owner && <p className="chip warn" style={{ alignSelf: 'flex-start' }}>You can view this class, but only {ctx.cls.creator} can approve or reject.</p>}
       {err && <p className="alert" role="alert"><Icon name="alert" size={18} /> {err}</p>}
@@ -83,7 +116,7 @@ export default function Review() {
       </div>
       {ctx.classId && !subs && !err && <Loading />}
       <p className="muted" role="status" aria-live="polite">{subs ? (shown.length ? '' : tab === 'pending' ? (subs.length ? 'Nothing is waiting for review. Nice work!' : 'No submissions yet.') : 'Nothing to show here.') : ''}</p>
-      <div className="rv-grid">{shown.map(s => <Card key={s.id} s={s} owner={owner} onReview={review} onZoom={setBig} />)}</div>
+      <div className="rv-grid">{shown.map(s => <Card key={s.id} s={s} owner={owner} ai={ai} onReview={review} onZoom={setBig} />)}</div>
       {big && <Big s={big} onClose={() => setBig(null)} />}
       <Doubts classId={ctx.classId} owner={owner} />
     </>

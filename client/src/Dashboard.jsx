@@ -5,6 +5,8 @@ import { Avatar, Icon, Loading, PointsChart } from './ui';
 import { ActivityList, Join } from './StudentShared';
 import Daily from './Daily';
 import Impact from './Impact';
+import StudentAnnouncements from './StudentAnnouncements';
+import StudentChallenges from './StudentChallenges';
 import './dashboard.css';
 
 const GO = { quiz: '/student/quizzes', mission: '/student/tasks' };
@@ -91,6 +93,8 @@ export function SDash() {
       </section>
       <div className="cards-3"><Streak s={d.streak} /><NextBadge badges={d.badges} points={d.points} /></div>
       {!d.classes.length && <div id="join"><Join onDone={load} /></div>}
+      {d.classes.length > 0 && <StudentAnnouncements />}
+      {d.classes.length > 0 && <StudentChallenges key={d.points} />}
       {d.classes.length > 0 && <Daily onChange={load} />}
       <Suggestions items={sug} />
       <div className="grid-2">

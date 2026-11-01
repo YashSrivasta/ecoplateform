@@ -59,6 +59,7 @@ export default function QuizHub() {
                   <div className="quiz-top">
                     <div className="quiz-meta">
                       {q.subject_name && <span className="chip" style={{ background: q.color, color: '#10140a' }}><span aria-hidden="true">{q.icon}</span>{q.subject_name}</span>}
+                      {q.from_teacher && <span className="chip">From your teacher</span>}
                       <span className="dots" role="img" aria-label={`Difficulty ${q.difficulty} of 5`}>{[1, 2, 3, 4, 5].map(n => <i key={n} className={n <= q.difficulty ? 'on' : ''} />)}</span>
                     </div>
                     <span className="chip">Worth {q.difficulty * 5} points</span>

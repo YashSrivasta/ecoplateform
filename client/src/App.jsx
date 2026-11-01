@@ -6,6 +6,10 @@ import { SDash, Quizzes, Tasks, Profile } from './Student';
 import Leaderboard from './Leaderboard';
 import Analytics from './Analytics';
 import Projects from './Projects';
+import QuizBuilder from './QuizBuilder';
+import Footprint from './Footprint';
+import Announcements from './Announcements';
+import TeamChallenges from './TeamChallenges';
 import { TDash, Students, Review, Assessment, Report } from './Teacher';
 import { AuthCtx, ToastCtx, Icon, useAuth } from './ui';
 import { A11yBar, useA11y } from './a11y';
@@ -64,11 +68,11 @@ export default function App() {
        <CelebrateProvider>
         <Routes>
           <Route path="/login" element={user ? <Navigate to={'/' + user.role} /> : <Login />} />
-          <Route path="/student" element={<Shell role="student" links={[['/student', 'Dashboard', 'grid'], ['/student/quizzes', 'Quiz Hub', 'quiz'], ['/student/tasks', 'Tasks', 'tasks'], ['/student/leaderboard', 'Leaderboard', 'trophy'], ['/student/profile', 'Profile', 'user']]} />}>
-            <Route index element={<SDash />} /><Route path="quizzes" element={<Quizzes />} /><Route path="tasks" element={<Tasks />} /><Route path="leaderboard" element={<Leaderboard />} /><Route path="profile" element={<Profile />} />
+          <Route path="/student" element={<Shell role="student" links={[['/student', 'Dashboard', 'grid'], ['/student/quizzes', 'Quiz Hub', 'quiz'], ['/student/tasks', 'Tasks', 'tasks'], ['/student/footprint', 'Footprint', 'leaf'], ['/student/leaderboard', 'Leaderboard', 'trophy'], ['/student/profile', 'Profile', 'user']]} />}>
+            <Route index element={<SDash />} /><Route path="quizzes" element={<Quizzes />} /><Route path="tasks" element={<Tasks />} /><Route path="footprint" element={<Footprint />} /><Route path="leaderboard" element={<Leaderboard />} /><Route path="profile" element={<Profile />} />
           </Route>
-          <Route path="/teacher" element={<Shell role="teacher" links={[['/teacher', 'Dashboard', 'grid'], ['/teacher/analytics', 'Analytics', 'chart'], ['/teacher/students', 'Students', 'users'], ['/teacher/review', 'Review', 'eye'], ['/teacher/projects', 'Projects', 'folder'], ['/teacher/assessment', 'Assessment', 'bars'], ['/teacher/report', 'Report', 'doc']]} />}>
-            <Route index element={<TDash />} /><Route path="analytics" element={<Analytics />} /><Route path="students" element={<Students />} /><Route path="review" element={<Review />} /><Route path="projects" element={<Projects />} /><Route path="assessment" element={<Assessment />} /><Route path="report" element={<Report />} />
+          <Route path="/teacher" element={<Shell role="teacher" links={[['/teacher', 'Dashboard', 'grid'], ['/teacher/analytics', 'Analytics', 'chart'], ['/teacher/students', 'Students', 'users'], ['/teacher/review', 'Review', 'eye'], ['/teacher/quizzes', 'Quiz builder', 'quiz'], ['/teacher/announcements', 'Announcements', 'chat'], ['/teacher/challenges', 'Team challenges', 'flame'], ['/teacher/projects', 'Projects', 'folder'], ['/teacher/assessment', 'Assessment', 'bars'], ['/teacher/report', 'Report', 'doc']]} />}>
+            <Route index element={<TDash />} /><Route path="analytics" element={<Analytics />} /><Route path="students" element={<Students />} /><Route path="review" element={<Review />} /><Route path="quizzes" element={<QuizBuilder />} /><Route path="announcements" element={<Announcements />} /><Route path="challenges" element={<TeamChallenges />} /><Route path="projects" element={<Projects />} /><Route path="assessment" element={<Assessment />} /><Route path="report" element={<Report />} />
           </Route>
           <Route path="*" element={<Navigate to={user ? '/' + user.role : '/login'} />} />
         </Routes>

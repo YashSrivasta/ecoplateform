@@ -1,0 +1,12 @@
+/* Teacher quiz builder */
+.qb-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.qb-row .field { flex: 1 1 9rem; }
+.qb-opts { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+.qb-opts legend { padding: 0; margin-bottom: .4rem; }
+.qb-opt { display: flex; align-items: center; gap: .75rem; }
+.qb-opt input[type="radio"] { width: 1.4rem; height: 1.4rem; flex: none; accent-color: var(--ink); cursor: pointer; }
+.qb-opt input:not([type="radio"]) { flex: 1; }
+.qb-q { font-size: 1.35rem; font-weight: 400; line-height: 1.3; margin: .9rem 0 .6rem; }
+.qb-list { margin: 0; padding-left: 1.5rem; display: flex; flex-direction: column; gap: .35rem; }
+.qb-list li.right { font-weight: 700; color: var(--lime); }
+.qb-ok { display: inline-flex; align-items: center; gap: .3rem; margin-left: .75rem; font-size: .85rem; font-weight: 600; }

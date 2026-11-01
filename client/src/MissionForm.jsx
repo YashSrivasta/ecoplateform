@@ -11,11 +11,11 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${Stri
  */
 export default function MissionForm({ classes, classId, onClassChange, projectId, title = 'New mission', bare, onPosted }) {
   const toast = useToast();
-  const [subjects, setSubjects] = useState([]);
-  const [f, setF] = useState({ title: '', description: '', points: 10, deadline: '', subjects: ['environment'] });
+  const [subjects, setSubjects] = useState([]), [topics, setTopics] = useState([]);
+  const [f, setF] = useState({ title: '', description: '', points: 10, deadline: '', subjects: ['environment'], topic: '' });
   const [cid, setCid] = useState(classId || classes[0]?.id);
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
-  useEffect(() => { api('/subjects').then(setSubjects).catch(() => {}); }, []);
+  useEffect(() => { api('/subjects').then(setSubjects).catch(() => {}); api('/mission-topics').then(setTopics).catch(() => {}); }, []);
   useEffect(() => { if (classId) setCid(classId); }, [classId]);
   const cls = classes.find(c => c.id === +cid) || classes[0];
 
@@ -23,7 +23,7 @@ export default function MissionForm({ classes, classId, onClassChange, projectId
   const submit = async e => {
     e.preventDefault(); setErr('');
     if (!f.subjects.length) return setErr('Pick at least one subject.');
-    const body = { title: f.title, description: f.description, points: +f.points, subjects: f.subjects, ...(f.deadline && { deadline: f.deadline }) };
+    const body = { title: f.title, description: f.description, points: +f.points, subjects: f.subjects, ...(f.deadline && { deadline: f.deadline }), ...(f.topic && { topic: f.topic }) };
     setBusy(true);
     try {
       if (projectId) await api(`/projects/${projectId}/missions`, { method: 'POST', body: { ...body, class_id: cls.id } });
@@ -49,6 +49,8 @@ export default function MissionForm({ classes, classId, onClassChange, projectId
         </fieldset>
         <div className="mf-row">
           <label className="field"><span className="label">Points (1–100)</span><input type="number" min="1" max="100" required value={f.points} onChange={e => setF({ ...f, points: e.target.value })} /></label>
+          {topics.length > 0 && <label className="field"><span className="label">Eco topic (optional)</span>
+            <select value={f.topic} onChange={e => setF({ ...f, topic: e.target.value })}><option value="">No topic</option>{topics.map(t => <option key={t.slug} value={t.slug}>{t.icon} {t.name}</option>)}</select></label>}
           <label className="field"><span className="label">Deadline (optional)</span><input type="date" min={todayStr()} value={f.deadline} onChange={e => setF({ ...f, deadline: e.target.value })} /></label>
         </div>
         <p className="muted" style={{ margin: 0 }}>{share ? `Points are split evenly: about ${share} per subject. ` : ''}{f.deadline ? 'Students can send their photo until the end of that day.' : 'With no deadline, students can send their photo any time.'}</p>

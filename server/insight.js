@@ -18,9 +18,13 @@ export async function awardMission(x, s, pts) {
   return touchStreak(x, s.student_id);
 }
 
-// Shared by normal missions (below) and project missions (collab.js): one set of rules for title, subjects and deadline.
+// Optional eco topic on a mission (stored as the slug in missions.topic). Add a line here to add a topic.
+export const TOPICS = [{ slug: 'water', name: 'Water', icon: '💧' }, { slug: 'waste', name: 'Waste', icon: '♻️' }, { slug: 'energy', name: 'Energy', icon: '⚡' }, { slug: 'trees', name: 'Trees', icon: '🌳' }];
+
+// Shared by normal missions (below) and project missions (collab.js): one set of rules for title, subjects, topic and deadline.
 export async function parseMission(body, all, get) {
-  const { title, description, points, subjects: subj, deadline } = body || {};
+  const { title, description, points, subjects: subj, deadline, topic: rawTopic } = body || {};
+  const topic = rawTopic ? String(rawTopic) : null; if (topic && !TOPICS.some(t => t.slug === topic)) return { error: 'Unknown topic' };
   if (typeof title !== 'string' || !title.trim() || !(points > 0)) return { error: 'Title and points required' };
   const known = await all('SELECT id,slug FROM subjects'), slugs = [...new Set(Array.isArray(subj) && subj.length ? subj : ['environment'])];
   const ids = slugs.map(s => known.find(k => k.slug === s)?.id); if (ids.some(i => !i)) return { error: 'Unknown subject' };
@@ -32,10 +36,10 @@ export async function parseMission(body, all, get) {
     catch (e) { if (String(e.code).startsWith('22')) return { error: 'Invalid deadline' }; throw e; }
     if (new Date(dl) < new Date()) return { error: 'Deadline is in the past' };
   }
-  return { title: title.trim().slice(0, 200), description: String(description || '').slice(0, 2000), points: Math.min(+points, 100), ids, dl };
+  return { title: title.trim().slice(0, 200), description: String(description || '').slice(0, 2000), points: Math.min(+points, 100), ids, dl, topic };
 }
 export async function insertMission(x, classId, m, projectId = null) {
-  const id = (await x('INSERT INTO missions(class_id,title,description,points,deadline,project_id) VALUES(?,?,?,?,?,?) RETURNING id', classId, m.title, m.description, m.points, m.dl, projectId)).rows[0].id;
+  const id = (await x('INSERT INTO missions(class_id,title,description,points,deadline,project_id,topic) VALUES(?,?,?,?,?,?,?) RETURNING id', classId, m.title, m.description, m.points, m.dl, projectId, m.topic ?? null)).rows[0].id;
   for (const sid of m.ids) await x('INSERT INTO mission_subjects(mission_id,subject_id) VALUES(?,?)', id, sid);
   return id;
 }
@@ -46,16 +50,18 @@ export default function insight({ app, S, T, own, view, wrap, all, get, run, tx 
   const day = col => `(${col} AT TIME ZONE ?::text)::date`; // always followed by a TZ parameter
 
   // ---------- missions: create (teacher) and list (student) ----------
+  app.get('/api/mission-topics', wrap(async (_req, res) => res.json(TOPICS))); // fixed public list, needs no login
   app.post('/api/classes/:id/missions', T, own, wrap(async (req, res) => {
     const m = await parseMission(req.body, all, get); if (m.error) return res.status(400).json({ error: m.error });
     let id; await tx(async x => { id = await insertMission(x, +req.params.id, m); });
     res.json({ ok: true, id });
   }));
 
-  app.get('/api/missions', S, wrap(async (req, res) => res.json(await all(`SELECT m.id,m.title,m.description,m.points,m.deadline,(m.deadline IS NOT NULL AND m.deadline < NOW()) AS closed,c.name AS class_name,m.project_id,(SELECT p.title FROM projects p WHERE p.id=m.project_id) AS project,${SUBJ_JSON},
+  app.get('/api/missions', S, wrap(async (req, res) => res.json(await all(`SELECT m.id,m.title,m.description,m.points,m.deadline,m.topic,(m.deadline IS NOT NULL AND m.deadline < NOW()) AS closed,c.name AS class_name,m.project_id,(SELECT p.title FROM projects p WHERE p.id=m.project_id) AS project,${SUBJ_JSON},
     (SELECT status FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS status,
-    (SELECT awarded FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS awarded
-    FROM missions m JOIN classes c ON c.id=m.class_id JOIN enrollments e ON e.class_id=c.id AND e.student_id=? ORDER BY m.id DESC`, req.user.id, req.user.id, req.user.id))));
+    (SELECT awarded FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS awarded,
+    (SELECT feedback FROM submissions s WHERE s.mission_id=m.id AND s.student_id=? ORDER BY s.id DESC LIMIT 1) AS feedback
+    FROM missions m JOIN classes c ON c.id=m.class_id JOIN enrollments e ON e.class_id=c.id AND e.student_id=? ORDER BY m.id DESC`, req.user.id, req.user.id, req.user.id, req.user.id))));
 
   // ---------- impact tracker: cumulative points per subject ----------
   app.get('/api/student/impact', S, wrap(async (req, res) => {

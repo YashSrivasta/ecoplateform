@@ -76,3 +76,53 @@ CREATE INDEX IF NOT EXISTS idx_sub_mission ON submissions(mission_id, student_id
 CREATE INDEX IF NOT EXISTS idx_quiz_subject_grade ON quizzes(subject_id, grade_min, grade_max);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON quiz_attempts(student_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_doubts_class ON doubts(class_id);
+
+-- ---------- teacher quiz builder ----------
+-- class_id NULL = the shared starter bank; a number = a question written by that class's teacher (only that class sees it)
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id);
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);
+-- "deleting" a teacher question hides it but keeps students' past answers and points intact
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_quizzes_class ON quizzes(class_id) WHERE class_id IS NOT NULL;
+
+-- ---------- eco-footprint tracker ----------
+-- A student logs an everyday eco action (cycled, reusable bag...) at most once per action per day. The action list and its CO2 estimates live in server/footprint.js.
+CREATE TABLE IF NOT EXISTS eco_logs(
+  id SERIAL PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES users(id), action TEXT NOT NULL, day DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(student_id, action, day));
+CREATE INDEX IF NOT EXISTS idx_eco_logs_student_day ON eco_logs(student_id, day);
+
+-- ---------- announcements board ----------
+-- A teacher posts a short notice to one of their own classes; students enrolled in that class see it.
+CREATE TABLE IF NOT EXISTS announcements(
+  id SERIAL PRIMARY KEY, class_id INTEGER NOT NULL REFERENCES classes(id), teacher_id INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_announcements_class ON announcements(class_id, id DESC);
+
+-- ---------- team challenges ----------
+-- A teacher splits one of their classes into teams for a date range. A team's score is NOT stored: it is worked out
+-- from the points members earn in the activity table between starts_on and ends_on (inclusive).
+CREATE TABLE IF NOT EXISTS team_challenges(
+  id SERIAL PRIMARY KEY, class_id INTEGER NOT NULL REFERENCES classes(id), teacher_id INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL, starts_on DATE NOT NULL, ends_on DATE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (ends_on >= starts_on));
+CREATE TABLE IF NOT EXISTS challenge_teams(
+  id SERIAL PRIMARY KEY, challenge_id INTEGER NOT NULL REFERENCES team_challenges(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, color TEXT NOT NULL);
+-- one team per student per challenge
+CREATE TABLE IF NOT EXISTS challenge_members(
+  challenge_id INTEGER NOT NULL REFERENCES team_challenges(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES challenge_teams(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id),
+  PRIMARY KEY (challenge_id, student_id));
+CREATE INDEX IF NOT EXISTS idx_team_challenges_class ON team_challenges(class_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_challenge_members_student ON challenge_members(student_id);
+CREATE INDEX IF NOT EXISTS idx_challenge_members_team ON challenge_members(team_id);
+
+-- ---------- mission eco topics ----------
+-- Optional tag on a mission: water, waste, energy or trees (the allowed list lives in server/insight.js). NULL = no topic.
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS topic TEXT;
+
+-- ---------- teacher feedback on a mission photo ----------
+-- A short note the teacher writes when approving or rejecting; the student sees it on the Tasks page. NULL = no note.
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS feedback TEXT;

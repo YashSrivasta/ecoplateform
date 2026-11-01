@@ -3,7 +3,7 @@ dotenv.config();
 import express from 'express'; import cors from 'cors'; import pg from 'pg';
 import bcrypt from 'bcryptjs'; import jwt from 'jsonwebtoken'; import multer from 'multer';
 import fs from 'fs'; import crypto from 'crypto';
-import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js'; import authx from './authx.js'; import collab from './collab.js';
+import { BADGES, streakOf } from './shared.js'; import QUESTIONS from './questions.js'; import learn from './learn.js'; import insight, { awardMission } from './insight.js'; import authx from './authx.js'; import collab from './collab.js'; import quizbuilder from './quizbuilder.js'; import footprint from './footprint.js'; import announcements from './announcements.js'; import teamchallenge from './teamchallenge.js'; import aifeedback from './aifeedback.js';
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET || !process.env.DATABASE_URL) { console.error('Set JWT_SECRET and DATABASE_URL'); process.exit(1); }
 pg.types.setTypeParser(20, parseInt); pg.types.setTypeParser(1700, parseFloat); // bigint/numeric -> JS numbers
@@ -99,16 +99,22 @@ app.get('/api/classes/:id/students', T, view, wrap(async (req, res) => res.json(
   (SELECT COUNT(*) FROM submissions s JOIN missions m ON m.id=s.mission_id WHERE s.student_id=u.id AND m.class_id=? AND s.status='approved') AS missions_done
   FROM enrollments e JOIN users u ON u.id=e.student_id WHERE e.class_id=? ORDER BY points DESC`, +req.params.id, +req.params.id))));
 insight({ app, S, T, own, view, wrap, all, get, run, tx }); // missions (subjects + deadline), impact, leaderboard, analytics, suggestions (insight.js)
+quizbuilder({ app, T, own, view, wrap, all, get, run }); // teachers write quiz questions for their own class (quizbuilder.js)
+aifeedback({ app, T, wrap, get }); // optional AI note suggestion on the Review page, off until GEMINI_API_KEY is set (aifeedback.js)
+teamchallenge({ app, S, T, own, view, wrap, all, get, run, tx }); // team challenges between groups of students (teamchallenge.js)
+announcements({ app, S, T, own, view, wrap, all, get, run }); // class notice board (announcements.js)
+footprint({ app, S, T, view, wrap, all, get, run }); // eco-footprint tracker: students log everyday eco actions (footprint.js)
 collab({ app, S, T, view, wrap, all, get, run, tx }); // projects across classes, class comparison, portfolio, CSV export (collab.js)
-app.get('/api/classes/:id/submissions', T, view, wrap(async (req, res) => res.json(await all(`SELECT s.id,s.photo,s.status,s.awarded,s.created_at,u.name AS student,m.title,m.points AS max_points
+app.get('/api/classes/:id/submissions', T, view, wrap(async (req, res) => res.json(await all(`SELECT s.id,s.photo,s.status,s.awarded,s.feedback,s.created_at,u.name AS student,m.title,m.points AS max_points
   FROM submissions s JOIN missions m ON m.id=s.mission_id JOIN users u ON u.id=s.student_id WHERE m.class_id=? ORDER BY (s.status='pending') DESC, s.id DESC`, +req.params.id))));
 app.post('/api/submissions/:id/review', T, wrap(async (req, res) => {
   const s = await get(`SELECT s.*,m.title,m.points AS max_points,c.teacher_id FROM submissions s JOIN missions m ON m.id=s.mission_id JOIN classes c ON c.id=m.class_id WHERE s.id=?`, req.params.id);
   if (!s) return res.status(404).json({ error: 'Submission not found' });
   if (s.teacher_id !== req.user.id) return res.status(403).json({ error: 'Only the teacher who created this class can approve or reject' });
   if (s.status !== 'pending') return res.status(409).json({ error: 'Already reviewed' });
+  const note = typeof req.body.feedback === 'string' ? req.body.feedback.trim().slice(0, 300) || null : null; // optional short note for the student
   const approve = !!req.body.approve, pts = approve ? Math.max(0, Math.min(req.body.points == null ? s.max_points : +req.body.points, s.max_points)) : 0;
-  await tx(async x => { await x('UPDATE submissions SET status=?,awarded=?,reviewed_at=NOW() WHERE id=?', approve ? 'approved' : 'rejected', pts, s.id);
+  await tx(async x => { await x('UPDATE submissions SET status=?,awarded=?,feedback=?,reviewed_at=NOW() WHERE id=?', approve ? 'approved' : 'rejected', pts, note, s.id);
     if (approve) await awardMission(x, s, pts); }); // splits points across the mission's subjects, counts toward the streak
   res.json({ ok: true, points: pts }); }));
 app.get('/api/classes/:id/assessment', T, view, wrap(async (req, res) => res.json(await all(`SELECT u.name,u.grade,

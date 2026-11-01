@@ -1,0 +1,13 @@
+/* Eco-footprint tracker */
+.fp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1.25rem; }
+.fp-grid { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .75rem; }
+.fp-act { width: 100%; height: 100%; display: flex; align-items: center; gap: .85rem; text-align: left; padding: .9rem 1.1rem; border-radius: 1.25rem; background: var(--field); border: 1.5px solid var(--field-line); color: var(--on); font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.fp-act:not(:disabled):hover { border-color: var(--ink); }
+.fp-act:disabled { cursor: wait; opacity: .7; }
+.fp-act.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.fp-ico { font-size: 1.8rem; line-height: 1; flex: none; }
+.fp-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.fp-txt b { font-weight: 600; line-height: 1.25; }
+.fp-txt small { font-size: .8rem; opacity: .75; }
+.fp-state { display: inline-flex; align-items: center; gap: .25rem; flex: none; font-size: .8rem; font-weight: 700; }
+.fp-act.on .fp-state { color: var(--lime); }
