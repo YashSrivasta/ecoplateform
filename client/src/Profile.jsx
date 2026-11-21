@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { Avatar, Icon, Loading, useToast } from './ui';
+import { NameEditor } from './Account';
 import PortfolioView from './Portfolio';
 import './profile.css';
 
@@ -60,6 +61,7 @@ export default function Profile() {
               <button type="button" className="btn btn-line" onClick={clear} disabled={busy}>Cancel</button>
             </> : <label className="btn btn-line"><Icon name="upload" size={18} />Change photo<input ref={input} className="file-input" type="file" accept="image/*" onChange={pick} /></label>}
           </div>
+          <div style={{ marginTop: '1rem' }}><NameEditor showName={false} onSaved={load} /></div>
           <h3 style={{ marginTop: '1.75rem' }}>My classes</h3>
           {d.classes.length ? d.classes.map(c => <p key={c.id}>{c.name} <span className="muted">· teacher {c.teacher}</span></p>) : <p className="muted">Not in a class yet. Join one from the Dashboard.</p>}
         </section>
